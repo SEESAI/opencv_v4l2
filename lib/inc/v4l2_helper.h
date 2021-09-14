@@ -47,6 +47,16 @@ int helper_release_cam_frame();
 
 int helper_deinit_cam();
 
+int helper_enumerate_controls();
+
+int helper_enumerate_control_menu();
+
+int helper_query_ioctl(int current_ctrl, struct v4l2_queryctrl* ctrl);
+
+int helper_get_control(const char* control_name);
+
+bool helper_set_control(const char* name, const int value);
+
 //int helper_change_cam_res(unsigned int width, unsigned int height, unsigned int format, enum io_method io_meth);
 
 //int helper_ctrl(unsigned int, int,int*);

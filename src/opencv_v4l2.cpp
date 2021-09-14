@@ -78,8 +78,8 @@ int main(int argc, char **argv)
 		cout << "No arguments given. Assuming default values.\n";
 		cout << "Device file path: " << default_videodev << "; Width: 640; Height: 480\n";
 		videodev = default_videodev;
-		width = 640;
-		height = 480;
+		width = 1920;
+		height = 1200;
 	}
 
 	/*
@@ -98,6 +98,13 @@ int main(int argc, char **argv)
 	if (helper_init_cam(videodev, width, height, V4L2_PIX_FMT_UYVY, IO_METHOD_USERPTR) < 0) {
 		return EXIT_FAILURE;
 	}
+
+//    helper_set_control("Exposure, Auto", V4L2_EXPOSURE_AUTO);
+
+    helper_set_control("Exposure, Auto", V4L2_EXPOSURE_MANUAL);
+    helper_set_control("Exposure (Absolute)", 64);
+
+    std::cout << "Manual exposure value: " << helper_get_control("Exposure (Absolute)") << std::endl;
 
 #ifdef ENABLE_DISPLAY
 	/*

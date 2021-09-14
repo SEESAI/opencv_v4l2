@@ -38,7 +38,7 @@ add_executable (${OPENCV_V4L2_DISPLAY_BIN} ${V4L2_SOURCE})
 target_include_directories (${OPENCV_V4L2_DISPLAY_BIN} PUBLIC ${V4L2_HELPER_LIB_INCLUDE_DIR})
 target_compile_definitions (${OPENCV_V4L2_DISPLAY_BIN} PUBLIC ENABLE_DISPLAY)
 target_link_libraries (${OPENCV_V4L2_DISPLAY_BIN} v4l2_helper)
-target_link_libraries (${OPENCV_V4L2_DISPLAY_BIN} ${OpenCV_LIBS})
+target_link_libraries (${OPENCV_V4L2_DISPLAY_BIN} ${OpenCV_LIBS} -lv4l2)
 
 add_executable (${OPENCV_V4L2_GL_DISPLAY_BIN} ${V4L2_SOURCE})
 target_include_directories (${OPENCV_V4L2_GL_DISPLAY_BIN} PUBLIC ${V4L2_HELPER_LIB_INCLUDE_DIR})

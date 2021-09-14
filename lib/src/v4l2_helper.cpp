@@ -20,6 +20,9 @@
 
 #include <linux/videodev2.h>
 #include "v4l2_helper.h"
+#include <libv4l2.h>
+#include <assert.h>
+#include <map>
 
 #define NUM_BUFFS	4
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
@@ -45,6 +48,9 @@ static int              fd = -1;
 static struct buffer          *buffers;
 static unsigned int     n_buffers;
 static struct v4l2_buffer frame_buf;
+static struct v4l2_queryctrl queryctrl;
+static struct v4l2_querymenu querymenu;
+static std::map<std::string, v4l2_queryctrl> valid_control_list;
 static char is_initialised = 0, is_released = 1;
 
 /**
@@ -553,6 +559,8 @@ int helper_init_cam(const char* devname, unsigned int width, unsigned int height
 	}
 
 	is_initialised = 1;
+
+    helper_enumerate_controls();
 	return 0;
 }
 
@@ -687,6 +695,117 @@ int helper_release_cam_frame()
 	 */
 	is_released = 1;
 	return 0;
+}
+
+int helper_query_ioctl(int current_ctrl, struct v4l2_queryctrl* ctrl) {
+
+    /*assertions*/
+    assert(fd > 0);
+    assert(ctrl != NULL);
+
+    int ret = 0;
+    int tries = 4;
+
+    do
+    {
+        if(ret) {
+            ctrl->id = current_ctrl | V4L2_CTRL_FLAG_NEXT_CTRL;
+        }
+        ret = v4l2_ioctl(fd, VIDIOC_QUERYCTRL, ctrl);
+    }
+    while (ret && tries-- && (errno == EIO || errno == EPIPE || errno == ETIMEDOUT));
+
+    return(ret);
+}
+
+int helper_enumerate_control_menu() {
+    memset(&querymenu, 0, sizeof(querymenu));
+    querymenu.id = queryctrl.id;
+
+    for (querymenu.index = queryctrl.minimum; (int)querymenu.index <= queryctrl.maximum; querymenu.index++) {
+        if (xioctl(fd, VIDIOC_QUERYMENU, &querymenu) == 0) {
+            printf("id: %s, 0x%X, %s\n", queryctrl.name, querymenu.index, querymenu.name);
+        }
+    }
+
+    return 0;
+}
+
+int helper_enumerate_controls() {
+    memset(&queryctrl, 0, sizeof(queryctrl));
+    queryctrl.id = V4L2_CTRL_CLASS_USER | V4L2_CTRL_FLAG_NEXT_CTRL;
+
+    while (helper_query_ioctl(VIDIOC_QUERYCTRL, &queryctrl) == 0) {
+        if (queryctrl.flags & V4L2_CTRL_FLAG_DISABLED)
+            continue;
+
+        valid_control_list[(const char*)queryctrl.name] = queryctrl;
+
+        if (queryctrl.type == V4L2_CTRL_TYPE_MENU) {
+            helper_enumerate_control_menu();
+        }
+
+        queryctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+    }
+
+    if (errno != EINVAL) {
+        return -1;
+    }
+
+    return 0;
+}
+
+int helper_get_control(const char *control_name) {
+    memset(&queryctrl, 0, sizeof(queryctrl));
+
+    std::string name = control_name;
+
+    if (name.empty()) {
+        return false;
+    }
+
+    std::map<std::string, v4l2_queryctrl>::iterator it = valid_control_list.find(name);
+    if (it == valid_control_list.end()) {
+        return false;
+    }
+
+    queryctrl.id = valid_control_list[name].id;
+
+    if (xioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) == -1) {
+        return -1;
+    }
+
+    struct v4l2_control control;
+    memset(&control, 0, sizeof(control));
+
+    control.id = queryctrl.id;
+
+    if (xioctl(fd, VIDIOC_G_CTRL, &control) == -1) {
+        return -1;
+    }
+
+    int value = control.value;
+
+    return value;
+}
+
+bool helper_set_control(const char* name, const int value) {
+    std::map<std::string, v4l2_queryctrl>::iterator it = valid_control_list.find(name);
+    if (it == valid_control_list.end()) {
+        return false;
+    }
+
+    struct v4l2_control control;
+    memset(&control, 0, sizeof(control));
+
+    control.id = it->second.id;
+    control.value = value;
+
+    if (xioctl(fd, VIDIOC_S_CTRL, &control) == -1 && errno != ERANGE) {
+        return false;
+    }
+
+    return true;
 }
 
 /**
