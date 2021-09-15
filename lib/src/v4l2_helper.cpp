@@ -21,42 +21,15 @@
 #include <linux/videodev2.h>
 #include "v4l2_helper.h"
 #include <libv4l2.h>
-#include <assert.h>
-#include <map>
 
 #define NUM_BUFFS	4
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
 
-struct buffer {
-	void   *start;
-	size_t  length;
-};
-
-/**
- * FIXME: All the state for the library is maintained via global variables.
- * So, it's not possible to use this library to access multiple devices
- * simultaneously. This is done to simplify the process of assessment.
- *
- * Hint: To access multiple devices at the same time using this application,
- * the public helper functions can be made to accept a new structure, that holds
- * the global state, as parameter.
- */
-
-static enum io_method   io = IO_METHOD_MMAP;
-static int              fd = -1;
-static struct buffer          *buffers;
-static unsigned int     n_buffers;
-static struct v4l2_buffer frame_buf;
-static struct v4l2_queryctrl queryctrl;
-static struct v4l2_querymenu querymenu;
-static std::map<std::string, v4l2_queryctrl> valid_control_list;
-static char is_initialised = 0, is_released = 1;
-
 /**
  * Start of static (internal) helper functions
  */
-static int xioctl(int fh, unsigned long request, void *arg)
+int v4l2_helper::xioctl(int fh, unsigned long request, void *arg)
 {
 	int r;
 
@@ -67,7 +40,7 @@ static int xioctl(int fh, unsigned long request, void *arg)
 	return r;
 }
 
-static int set_io_method(enum io_method io_meth)
+int v4l2_helper::set_io_method(enum io_method io_meth)
 {
 	switch (io_meth)
 	{
@@ -82,7 +55,7 @@ static int set_io_method(enum io_method io_meth)
 	}
 }
 
-static int stop_capturing(void)
+int v4l2_helper::stop_capturing(void)
 {
 	enum v4l2_buf_type type;
 	struct v4l2_requestbuffers req;
@@ -123,7 +96,7 @@ static int stop_capturing(void)
 	return 0;
 }
 
-static int start_capturing(void)
+int v4l2_helper::start_capturing(void)
 {
 	unsigned int i;
 	enum v4l2_buf_type type;
@@ -185,7 +158,7 @@ static int start_capturing(void)
 	return 0;
 }
 
-static int uninit_device(void)
+int v4l2_helper::uninit_device(void)
 {
 	unsigned int i;
 	int ret = 0;
@@ -211,7 +184,7 @@ static int uninit_device(void)
 	return ret;
 }
 
-static int init_read(unsigned int buffer_size)
+int v4l2_helper::init_read(unsigned int buffer_size)
 {
 	buffers = (struct buffer *) calloc(1, sizeof(*buffers));
 
@@ -231,7 +204,7 @@ static int init_read(unsigned int buffer_size)
 	return 0;
 }
 
-static int init_mmap(void)
+int v4l2_helper::init_mmap(void)
 {
 	struct v4l2_requestbuffers req;
 	int ret = 0;
@@ -320,7 +293,7 @@ LOOP_FREE_EXIT:
 	return ret;
 }
 
-static int init_userp(unsigned int buffer_size)
+int v4l2_helper::init_userp(unsigned int buffer_size)
 {
 	struct v4l2_requestbuffers req;
 
@@ -369,7 +342,7 @@ static int init_userp(unsigned int buffer_size)
 	return 0;
 }
 
-static int init_device(unsigned int width, unsigned int height, unsigned int format)
+int v4l2_helper::init_device(unsigned int width, unsigned int height, unsigned int format)
 {
 	struct v4l2_capability cap;
 	struct v4l2_cropcap cropcap;
@@ -488,7 +461,7 @@ static int init_device(unsigned int width, unsigned int height, unsigned int for
 	return 0;
 }
 
-static int close_device(void)
+int v4l2_helper::close_device(void)
 {
 	if (-1 == close(fd))
 	{
@@ -501,7 +474,7 @@ static int close_device(void)
 	return 0;
 }
 
-static int open_device(const char *dev_name)
+int v4l2_helper::open_device(const char *dev_name)
 {
 	struct stat st;
 
@@ -534,7 +507,7 @@ static int open_device(const char *dev_name)
 /**
  * Start of public helper functions
  */
-int helper_init_cam(const char* devname, unsigned int width, unsigned int height, unsigned int format, enum io_method io_meth)
+int v4l2_helper::helper_init_cam(const char* devname, unsigned int width, unsigned int height, unsigned int format, enum io_method io_meth)
 {
 	if (is_initialised)
 	{
@@ -564,7 +537,7 @@ int helper_init_cam(const char* devname, unsigned int width, unsigned int height
 	return 0;
 }
 
-int helper_deinit_cam()
+int v4l2_helper::helper_deinit_cam()
 {
 	if (!is_initialised)
 	{
@@ -592,7 +565,7 @@ int helper_deinit_cam()
 	return 0;
 }
 
-int helper_get_cam_frame(unsigned char **pointer_to_cam_data, int *size)
+int v4l2_helper::helper_get_cam_frame(unsigned char **pointer_to_cam_data, int *size)
 {
 	static unsigned char max_timeout_retries = 10;
 	unsigned char timeout_retries = 0;
@@ -666,7 +639,7 @@ int helper_get_cam_frame(unsigned char **pointer_to_cam_data, int *size)
 	return 0;
 }
 
-int helper_release_cam_frame()
+int v4l2_helper::helper_release_cam_frame()
 {
 	if (!is_initialised)
 	{
@@ -697,7 +670,7 @@ int helper_release_cam_frame()
 	return 0;
 }
 
-int helper_query_ioctl(int current_ctrl, struct v4l2_queryctrl* ctrl) {
+int v4l2_helper::helper_query_ioctl(int current_ctrl, struct v4l2_queryctrl* ctrl) {
 
     /*assertions*/
     assert(fd > 0);
@@ -718,7 +691,7 @@ int helper_query_ioctl(int current_ctrl, struct v4l2_queryctrl* ctrl) {
     return(ret);
 }
 
-int helper_enumerate_control_menu() {
+int v4l2_helper::helper_enumerate_control_menu() {
     memset(&querymenu, 0, sizeof(querymenu));
     querymenu.id = queryctrl.id;
 
@@ -731,7 +704,7 @@ int helper_enumerate_control_menu() {
     return 0;
 }
 
-int helper_enumerate_controls() {
+int v4l2_helper::helper_enumerate_controls() {
     memset(&queryctrl, 0, sizeof(queryctrl));
     queryctrl.id = V4L2_CTRL_CLASS_USER | V4L2_CTRL_FLAG_NEXT_CTRL;
 
@@ -755,7 +728,7 @@ int helper_enumerate_controls() {
     return 0;
 }
 
-int helper_get_control(const char *control_name) {
+int v4l2_helper::helper_get_control(const char *control_name) {
     memset(&queryctrl, 0, sizeof(queryctrl));
 
     std::string name = control_name;
@@ -789,7 +762,7 @@ int helper_get_control(const char *control_name) {
     return value;
 }
 
-bool helper_set_control(const char* name, const int value) {
+bool v4l2_helper::helper_set_control(const char* name, const int value) {
     std::map<std::string, v4l2_queryctrl>::iterator it = valid_control_list.find(name);
     if (it == valid_control_list.end()) {
         return false;

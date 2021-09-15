@@ -82,6 +82,8 @@ int main(int argc, char **argv)
 		height = 1200;
 	}
 
+    v4l2_helper camera_helper;
+
 	/*
 	 * Helper function to initialize camera to a specific resolution and format
 	 *
@@ -95,16 +97,16 @@ int main(int argc, char **argv)
 	 *
 	 * [1]: https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/pixfmt-v4l2.html#c.v4l2_pix_format
 	 */
-	if (helper_init_cam(videodev, width, height, V4L2_PIX_FMT_UYVY, IO_METHOD_USERPTR) < 0) {
+	if (camera_helper.helper_init_cam(videodev, width, height, V4L2_PIX_FMT_UYVY, IO_METHOD_USERPTR) < 0) {
 		return EXIT_FAILURE;
 	}
 
 //    helper_set_control("Exposure, Auto", V4L2_EXPOSURE_AUTO);
 
-    helper_set_control("Exposure, Auto", V4L2_EXPOSURE_MANUAL);
-    helper_set_control("Exposure (Absolute)", 64);
+    camera_helper.helper_set_control("Exposure, Auto", V4L2_EXPOSURE_MANUAL);
+    camera_helper.helper_set_control("Exposure (Absolute)", 64);
 
-    std::cout << "Manual exposure value: " << helper_get_control("Exposure (Absolute)") << std::endl;
+    std::cout << "Manual exposure value: " << camera_helper.helper_get_control("Exposure (Absolute)") << std::endl;
 
 #ifdef ENABLE_DISPLAY
 	/*
@@ -139,7 +141,7 @@ int main(int argc, char **argv)
 		/*
 		 * Helper function to access camera data
 		 */
-		if (helper_get_cam_frame(&ptr_cam_frame, &bytes_used) < 0) {
+		if (camera_helper.helper_get_cam_frame(&ptr_cam_frame, &bytes_used) < 0) {
 			break;
 		}
 
@@ -192,7 +194,7 @@ int main(int argc, char **argv)
 		 * Helper function to release camera data. This must be called for every
 		 * call to helper_get_cam_frame()
 		 */
-		if (helper_release_cam_frame() < 0)
+		if (camera_helper.helper_release_cam_frame() < 0)
 		{
 			break;
 		}
@@ -223,7 +225,7 @@ int main(int argc, char **argv)
 	/*
 	 * Helper function to free allocated resources and close the camera device.
 	 */
-	if (helper_deinit_cam() < 0)
+	if (camera_helper.helper_deinit_cam() < 0)
 	{
 		return EXIT_FAILURE;
 	}
