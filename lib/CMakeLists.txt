@@ -9,12 +9,12 @@ set (
 )
 set (V4L2_HELPER_LIB_INSTALL_PATH "${CMAKE_INSTALL_PREFIX}/lib" CACHE INTERNAL "")
 set (V4L2_HELPER_HEADER_INSTALL_PATH "${CMAKE_INSTALL_PREFIX}/include" CACHE INTERNAL "")
-set (V4L2_HELPER_LIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/inc" CACHE INTERNAL "")
+set (V4L2_HELPER_LIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 
 set (GCC_COMPILE_FLAGS -Wall -Wpedantic -Wextra -O3 -Wshadow -g)
 add_compile_options (${GCC_COMPILE_FLAGS})
 
-add_library (v4l2_helper SHARED src/v4l2_helper.cpp)
+add_library (v4l2_helper SHARED v4l2_helper.cpp)
 target_include_directories (v4l2_helper PUBLIC ${V4L2_HELPER_LIB_INCLUDE_DIR})
 
 set_target_properties (
