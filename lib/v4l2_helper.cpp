@@ -567,8 +567,6 @@ int v4l2_helper::helper_deinit_cam()
 
 int v4l2_helper::helper_get_cam_frame(unsigned char **pointer_to_cam_data, int *size)
 {
-	static unsigned char max_timeout_retries = 10;
-	unsigned char timeout_retries = 0;
 
 	if (!is_initialised)
 	{
@@ -582,58 +580,34 @@ int v4l2_helper::helper_get_cam_frame(unsigned char **pointer_to_cam_data, int *
 		return ERR;
 	}
 
-	for (;;) {
-		fd_set fds;
-		struct timeval tv;
-		int r;
+    fd_set fds;
+    struct timeval tv;
+    int r;
 
-		FD_ZERO(&fds);
-		FD_SET(fd, &fds);
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
 
-		/* Timeout. */
-		tv.tv_sec = 2;
-		tv.tv_usec = 0;
+    /* Timeout. */
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;
 
-		r = select(fd + 1, &fds, NULL, NULL, &tv);
+    r = select(fd + 1, &fds, NULL, NULL, &tv);
 
-		if (-1 == r) {
-			if (EINTR == errno)
-				continue;
-		}
+    if (-1 == r)
+        return ERR;
 
-		if (0 == r) {
-			fprintf(stderr, "select timeout\n");
-			timeout_retries++;
+    if (0 == r)
+        return -1;
 
-			if (timeout_retries == max_timeout_retries)
-			{
-				fprintf(stderr, "Could not get frame after multiple retries\n");
-				return ERR;
-			}
-		}
+	CLEAR(frame_buf);
+	frame_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-		CLEAR(frame_buf);
-		frame_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (-1 == xioctl(fd, VIDIOC_DQBUF, &frame_buf)) {
+        return -1;
+    }
 
-		if (-1 == xioctl(fd, VIDIOC_DQBUF, &frame_buf)) {
-			switch (errno) {
-				case EAGAIN:
-					continue;
-
-				case EIO:
-					/* Could ignore EIO, see spec. */
-
-					/* fall through */
-
-				default:
-					continue;
-			}
-		}
-		*pointer_to_cam_data = (unsigned char*) buffers[frame_buf.index].start;
-		*size = frame_buf.bytesused;
-		break;
-		/* EAGAIN - continue select loop. */
-	}
+    *pointer_to_cam_data = (unsigned char*) buffers[frame_buf.index].start;
+    *size = frame_buf.bytesused;
 
 	is_released = 0;
 	return 0;
